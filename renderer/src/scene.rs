@@ -376,6 +376,8 @@ impl Scene {
         commands.into_iter().for_each(|command| renderer.render_command(&command));
         renderer.end_scene();
     }
+
+
 }
 
 /// Receives render commands and delivers them to a `RenderCommandListener`.

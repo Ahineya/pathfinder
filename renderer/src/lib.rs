@@ -22,10 +22,10 @@ pub mod gpu;
 pub mod options;
 pub mod paint;
 pub mod scene;
+pub mod gpu_data;
 
 mod allocator;
 mod builder;
-mod gpu_data;
 mod tile_map;
 mod tiler;
 mod tiles;

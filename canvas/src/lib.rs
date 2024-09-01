@@ -72,6 +72,7 @@ mod text {
 #[cfg(test)]
 mod tests;
 
+#[derive(Clone)]
 pub struct Canvas {
     scene: Scene,
 }
@@ -93,6 +94,10 @@ impl Canvas {
     #[inline]
     pub fn scene(&self) -> &Scene {
         &self.scene
+    }
+    
+    pub fn scene_mut(&mut self) -> &mut Scene {
+        &mut self.scene
     }
 
     /// Returns the inner scene, replacing it with a blank scene.
@@ -137,6 +142,7 @@ impl Canvas {
     }
 }
 
+#[derive(Clone)]
 pub struct CanvasRenderingContext2D {
     canvas: Canvas,
     current_state: State,
