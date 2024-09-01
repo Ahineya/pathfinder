@@ -13,6 +13,7 @@ homepage = "https://github.com/servo/pathfinder"
 bitflags = "2.4"
 log = "0.4.22"
 float-ord = "0.3"
+rustybuzz = "0.18.0"
 
 [dependencies.pathfinder_content]
 path = "../content"
@@ -26,6 +27,13 @@ version = "0.5"
 path = "../renderer"
 version = "0.5"
 
-#[dependencies.skribo]
-#version = "0.1"
-#path = "../../skribo"
+[dependencies.web-sys]
+version = "0.3.70"
+features = [
+    'Document',
+    'Element',
+    'HtmlCanvasElement',
+    'WebGl2RenderingContext',
+    'Window',
+    'console',
+]

@@ -16,7 +16,7 @@ use crate::family_handle::FamilyHandle;
 use crate::handle::Handle;
 
 /// Defines a set of faces that vary in weight, width or slope.
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct Family
 {
     fonts: Vec<Font>,

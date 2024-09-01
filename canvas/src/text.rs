@@ -30,7 +30,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
-use pathfinder_text::error::{FontLoadingError, SelectionError};
+use pathfinder_text::error::{FontLoadingError, GlyphLoadingError, SelectionError};
 use pathfinder_text::family_name::FamilyName;
 use pathfinder_text::handle::Handle;
 use pathfinder_text::hinting::HintingOptions;
@@ -38,7 +38,8 @@ use pathfinder_text::properties::Properties;
 use pathfinder_text::rasterization::RasterizationOptions;
 use pathfinder_text::source::Source;
 use pathfinder_text::sources::mem::MemSource;
-use pathfinder_text::text_layout::TextLayout;
+use pathfinder_text::text_layout::{layout, TextLayout};
+// use pathfinder_text::text_layout::TextLayout;
 
 impl CanvasRenderingContext2D {
     /// Fills the given text using the current style.
@@ -47,13 +48,13 @@ impl CanvasRenderingContext2D {
     /// fill the text that you passed into `measure_text()` with the layout-related style
     /// properties set at the time you called that function. This allows Pathfinder to skip having
     /// to lay out the text again.
-    pub fn fill_text<T>(&mut self, text: &T, position: Vector2F)
+    pub fn fill_text<T>(&mut self, text: &T, position: Vector2F) -> Result<String, GlyphLoadingError>
     where
         T: ToTextLayout + ?Sized,
     {
         let paint = self.current_state.resolve_paint(&self.current_state.fill_paint);
         let paint_id = self.canvas.scene.push_paint(&paint);
-        self.fill_or_stroke_text(text, position, paint_id, TextRenderMode::Fill);
+        self.fill_or_stroke_text(text, position, paint_id, TextRenderMode::Fill)
     }
 
     /// Strokes the given text using the current style.
@@ -88,34 +89,33 @@ impl CanvasRenderingContext2D {
                               text: &T,
                               mut position: Vector2F,
                               paint_id: PaintId,
-                              render_mode: TextRenderMode)
+                              render_mode: TextRenderMode) -> Result<String, GlyphLoadingError>
     where
         T: ToTextLayout + ?Sized,
     {
         let layout = text.layout(CanvasState(&self.current_state));
-
+        
         let clip_path = self.current_state.clip_path;
         let blend_mode = self.current_state.global_composite_operation.to_blend_mode();
-
+        
         position += layout.text_origin();
         let transform = self.current_state.transform * Transform2F::from_translation(position);
-
-        // TODO(pcwalton): Report errors.
-        // drop(self.canvas_font_context
-        //          .0
-        //          .borrow_mut()
-        //          .font_context
-        //          .push_layout(&mut self.canvas.scene,
-        //                       &layout.skribo_layout,
-        //                       &TextStyle { size: layout.font_size },
-        //                       &FontRenderOptions {
-        //                           transform,
-        //                           render_mode,
-        //                           hinting_options: HintingOptions::None,
-        //                           clip_path,
-        //                           blend_mode,
-        //                           paint_id,
-        //                       }));
+        
+        self.canvas_font_context
+                 .0
+                 .borrow_mut()
+                 .font_context
+                 .push_layout(&mut self.canvas.scene,
+                              &layout.skribo_layout,
+                              &TextStyle { size: layout.font_size },
+                              &FontRenderOptions {
+                                  transform,
+                                  render_mode,
+                                  hinting_options: HintingOptions::None,
+                                  clip_path,
+                                  blend_mode,
+                                  paint_id,
+                              })
     }
 
     // Text styles
@@ -179,7 +179,7 @@ pub trait ToTextLayout {
 
 impl ToTextLayout for str {
     fn layout(&self, state: CanvasState) -> Cow<TextMetrics> {
-        let skribo_layout = Rc::new(TextLayout(&TextStyle { size: state.0.font_size },
+        let skribo_layout = Rc::new(layout(&TextStyle { size: state.0.font_size },
                                                    &state.0.font_collection,
                                                    self));
         Cow::Owned(TextMetrics::new(skribo_layout,
@@ -223,7 +223,7 @@ pub enum FontError {
 }
 
 pub(super) struct CanvasFontContextData {
-    pub(super) font_context: FontContext<Font>,
+    pub(super) font_context: FontContext,
     #[allow(dead_code)]
     pub(super) font_source: Arc<dyn Source>,
     #[allow(dead_code)]
@@ -400,7 +400,7 @@ impl TextMetrics {
         //     }
         // }
         // self.width.get().unwrap()
-        unimplemented!();
+        // unimplemented!();
         0.0
     }
 

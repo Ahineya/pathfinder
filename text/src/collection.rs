@@ -1,23 +1,28 @@
 //! The font collection type.
 
-use std::fmt;
+use std::{fmt, slice};
 use std::ops::Range;
 use std::sync::Arc;
-use pathfinder_geometry::rect::RectF;
+use rustybuzz::Face;
+use pathfinder_geometry::rect::{RectF, RectI};
+use pathfinder_geometry::transform2d::Transform2F;
 use crate::error::{FontLoadingError, GlyphLoadingError};
 use crate::handle::Handle;
 use crate::hinting::HintingOptions;
 use crate::metrics::Metrics;
 use crate::outline::{Outline, OutlineSink};
 use crate::properties::Properties;
+use crate::rasterization::RasterizationOptions;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Font {
+    pub face: Arc<Face<'static>>,
+    pub font_data: Arc<Vec<u8>>,
 }
 
 impl Font {
     pub fn postscript_name(&self) -> Option<String> {
-        None
+        Some("Sevillana-Regular".to_string())
     }
     
     pub fn full_name(&self) -> String {
@@ -59,7 +64,24 @@ impl Font {
     }
 
     pub fn from_handle(handle: &Handle) -> Result<Self, FontLoadingError> {
-        Err(FontLoadingError::NotImplemented)
+        match *handle {
+            Handle::Memory {
+                ref bytes,
+                font_index,
+            } => Self::from_bytes(Arc::clone(bytes), font_index, Arc::clone(bytes)),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn from_bytes(font_data: Arc<Vec<u8>>, font_index: u32, data: Arc<Vec<u8>>) -> Result<Self, FontLoadingError> {
+        let boxed_data: Box<[u8]> = font_data.as_slice().into();
+        let leaked_data: &'static [u8] = Box::leak(boxed_data);
+        let face = Face::from_slice(&leaked_data, font_index).unwrap();
+
+        Ok(Self {
+            face: Arc::new(face),
+            font_data: data
+        })
     }
 
     pub fn properties(&self) -> Properties {
@@ -69,7 +91,18 @@ impl Font {
     }
     
     pub fn family_name(&self) -> String {
-        "Ainanenane".to_string()
+        "Sevillana".to_string()
+    }
+    
+    pub fn raster_bounds(
+        &self,
+        glyph_id: u32,
+        point_size: f32,
+        transform: Transform2F,
+        _: HintingOptions,
+        _: RasterizationOptions,
+    ) -> Result<RectI, GlyphLoadingError> {
+        Ok(RectI::default())
     }
 }
 
@@ -90,7 +123,7 @@ pub struct FontRef {
     pub font: Arc<Font>,
 }
 
-impl fmt::Debug for FontRef {
+impl<'a> fmt::Debug for FontRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "FontRef({})", self.font.full_name())
     }
@@ -102,7 +135,7 @@ pub struct Itemizer<'a> {
     ix: usize,
 }
 
-impl FontRef {
+impl<'a> FontRef {
     pub fn new(font: Font) -> FontRef {
         FontRef {
             font: Arc::new(font),
@@ -110,7 +143,7 @@ impl FontRef {
     }
 }
 
-impl FontFamily {
+impl<'a> FontFamily {
     pub fn new() -> FontFamily {
         FontFamily { fonts: Vec::new() }
     }
@@ -138,7 +171,7 @@ impl FontFamily {
     }
 }
 
-impl FontCollection {
+impl<'a> FontCollection {
     pub fn new() -> FontCollection {
         FontCollection {
             families: Vec::new(),
@@ -149,7 +182,7 @@ impl FontCollection {
         self.families.push(family);
     }
 
-    pub fn itemize<'a>(&'a self, text: &'a str) -> Itemizer<'a> {
+    pub fn itemize<'b>(&'b self, text: &'b str) -> Itemizer<'b> {
         Itemizer {
             text,
             collection: self,

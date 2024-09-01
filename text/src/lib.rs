@@ -197,7 +197,7 @@ impl FontContext {
                        layout: &TextLayout,
                        style: &TextStyle,
                        render_options: &FontRenderOptions)
-                       -> Result<(), GlyphLoadingError> {
+                       -> Result<String, GlyphLoadingError> {
         let mut cached_font_key: Option<CachedFontKey> = None;
         for glyph in &layout.glyphs {
             match cached_font_key {
@@ -219,7 +219,7 @@ impl FontContext {
                             style.size,
                             &render_options)?;
         }
-        Ok(())
+        Ok("PUSH LAYOUT".to_string())
     }
 
     #[inline]

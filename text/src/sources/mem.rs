@@ -44,7 +44,7 @@ impl MemSource {
         }
         families.sort_by(|a, b| a.family_name.cmp(&b.family_name));
         Ok(MemSource { families })
-    }
+    } 
 
     /// Add an existing font handle to a `MemSource`.
     ///

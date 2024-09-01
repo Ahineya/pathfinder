@@ -37,7 +37,7 @@ use std::f32;
 use std::fmt::{Debug, Error as FmtError, Formatter};
 use std::mem;
 use std::sync::Arc;
-
+use pathfinder_text::collection::FontCollection;
 pub use text::CanvasFontContext;
 
 // #[cfg(feature = "pf-text")]
