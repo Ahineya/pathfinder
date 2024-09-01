@@ -40,8 +40,8 @@ use std::sync::Arc;
 
 pub use text::CanvasFontContext;
 
-#[cfg(feature = "pf-text")]
-use skribo::FontCollection;
+// #[cfg(feature = "pf-text")]
+// use skribo::FontCollection;
 #[cfg(not(feature = "pf-text"))]
 use crate::text::FontCollection;
 

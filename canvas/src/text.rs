@@ -9,25 +9,36 @@
 // except according to those terms.
 
 use crate::{CanvasRenderingContext2D, State, TextAlign, TextBaseline};
-use font_kit::canvas::RasterizationOptions;
-use font_kit::error::{FontLoadingError, SelectionError};
-use font_kit::family_name::FamilyName;
-use font_kit::handle::Handle;
-use font_kit::hinting::HintingOptions;
-use font_kit::loaders::default::Font;
-use font_kit::properties::Properties;
-use font_kit::source::{Source, SystemSource};
-use font_kit::sources::mem::MemSource;
+// use font_kit::canvas::RasterizationOptions;
+// use font_kit::error::{FontLoadingError, SelectionError};
+// use font_kit::family_name::FamilyName;
+// use font_kit::handle::Handle;
+// use font_kit::hinting::HintingOptions;
+// use font_kit::loaders::default::Font;
+// use font_kit::properties::Properties;
+// use font_kit::source::{Source, SystemSource};
+// use font_kit::sources::mem::MemSource;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::util;
 use pathfinder_geometry::vector::{Vector2F, vec2f};
 use pathfinder_renderer::paint::PaintId;
-use pathfinder_text::{FontContext, FontRenderOptions, TextRenderMode};
-use skribo::{FontCollection, FontFamily, FontRef, Layout as SkriboLayout, TextStyle};
+use pathfinder_text::{FontContext, FontRenderOptions, TextRenderMode, TextStyle};
+
+use pathfinder_text::collection::{Font, FontCollection, FontFamily, FontRef};
+
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
+use pathfinder_text::error::{FontLoadingError, SelectionError};
+use pathfinder_text::family_name::FamilyName;
+use pathfinder_text::handle::Handle;
+use pathfinder_text::hinting::HintingOptions;
+use pathfinder_text::properties::Properties;
+use pathfinder_text::rasterization::RasterizationOptions;
+use pathfinder_text::source::Source;
+use pathfinder_text::sources::mem::MemSource;
+use pathfinder_text::text_layout::TextLayout;
 
 impl CanvasRenderingContext2D {
     /// Fills the given text using the current style.
@@ -36,7 +47,10 @@ impl CanvasRenderingContext2D {
     /// fill the text that you passed into `measure_text()` with the layout-related style
     /// properties set at the time you called that function. This allows Pathfinder to skip having
     /// to lay out the text again.
-    pub fn fill_text<T>(&mut self, text: &T, position: Vector2F) where T: ToTextLayout + ?Sized {
+    pub fn fill_text<T>(&mut self, text: &T, position: Vector2F)
+    where
+        T: ToTextLayout + ?Sized,
+    {
         let paint = self.current_state.resolve_paint(&self.current_state.fill_paint);
         let paint_id = self.canvas.scene.push_paint(&paint);
         self.fill_or_stroke_text(text, position, paint_id, TextRenderMode::Fill);
@@ -48,7 +62,10 @@ impl CanvasRenderingContext2D {
     /// stroke the text that you passed into `measure_text()` with the layout-related style
     /// properties set at the time you called that function. This allows Pathfinder to skip having
     /// to lay out the text again.
-    pub fn stroke_text<T>(&mut self, text: &T, position: Vector2F) where T: ToTextLayout + ?Sized {
+    pub fn stroke_text<T>(&mut self, text: &T, position: Vector2F)
+    where
+        T: ToTextLayout + ?Sized,
+    {
         let paint = self.current_state.resolve_paint(&self.current_state.stroke_paint);
         let paint_id = self.canvas.scene.push_paint(&paint);
         let render_mode = TextRenderMode::Stroke(self.current_state.resolve_stroke_style());
@@ -60,7 +77,10 @@ impl CanvasRenderingContext2D {
     /// As an extension, the returned `TextMetrics` object contains all the layout data for the
     /// string and can be used in its place when calling `fill_text()` and `stroke_text()` to avoid
     /// needlessly performing layout multiple times.
-    pub fn measure_text<T>(&self, text: &T) -> TextMetrics where T: ToTextLayout + ?Sized {
+    pub fn measure_text<T>(&self, text: &T) -> TextMetrics
+    where
+        T: ToTextLayout + ?Sized,
+    {
         text.layout(CanvasState(&self.current_state)).into_owned()
     }
 
@@ -69,7 +89,9 @@ impl CanvasRenderingContext2D {
                               mut position: Vector2F,
                               paint_id: PaintId,
                               render_mode: TextRenderMode)
-                              where T: ToTextLayout + ?Sized {
+    where
+        T: ToTextLayout + ?Sized,
+    {
         let layout = text.layout(CanvasState(&self.current_state));
 
         let clip_path = self.current_state.clip_path;
@@ -79,21 +101,21 @@ impl CanvasRenderingContext2D {
         let transform = self.current_state.transform * Transform2F::from_translation(position);
 
         // TODO(pcwalton): Report errors.
-        drop(self.canvas_font_context
-                 .0
-                 .borrow_mut()
-                 .font_context
-                 .push_layout(&mut self.canvas.scene,
-                              &layout.skribo_layout,
-                              &TextStyle { size: layout.font_size },
-                              &FontRenderOptions {
-                                  transform,
-                                  render_mode,
-                                  hinting_options: HintingOptions::None,
-                                  clip_path,
-                                  blend_mode,
-                                  paint_id,
-                              }));
+        // drop(self.canvas_font_context
+        //          .0
+        //          .borrow_mut()
+        //          .font_context
+        //          .push_layout(&mut self.canvas.scene,
+        //                       &layout.skribo_layout,
+        //                       &TextStyle { size: layout.font_size },
+        //                       &FontRenderOptions {
+        //                           transform,
+        //                           render_mode,
+        //                           hinting_options: HintingOptions::None,
+        //                           clip_path,
+        //                           blend_mode,
+        //                           paint_id,
+        //                       }));
     }
 
     // Text styles
@@ -104,9 +126,12 @@ impl CanvasRenderingContext2D {
     }
 
     #[inline]
-    pub fn set_font<FC>(&mut self, font_collection: FC) -> Result<(), FontError> where FC: IntoFontCollection {
+    pub fn set_font<FC>(&mut self, font_collection: FC) -> Result<(), FontError>
+    where
+        FC: IntoFontCollection,
+    {
         let font_collection = font_collection.into_font_collection(&self.canvas_font_context)?;
-        self.current_state.font_collection = font_collection; 
+        self.current_state.font_collection = font_collection;
         Ok(())
     }
 
@@ -154,7 +179,7 @@ pub trait ToTextLayout {
 
 impl ToTextLayout for str {
     fn layout(&self, state: CanvasState) -> Cow<TextMetrics> {
-        let skribo_layout = Rc::new(skribo::layout(&TextStyle { size: state.0.font_size },
+        let skribo_layout = Rc::new(TextLayout(&TextStyle { size: state.0.font_size },
                                                    &state.0.font_collection,
                                                    self));
         Cow::Owned(TextMetrics::new(skribo_layout,
@@ -171,7 +196,7 @@ impl ToTextLayout for String {
     }
 }
 
-impl ToTextLayout for Rc<SkriboLayout> {
+impl ToTextLayout for Rc<TextLayout> {
     fn layout(&self, state: CanvasState) -> Cow<TextMetrics> {
         Cow::Owned(TextMetrics::new((*self).clone(),
                                     state.0.font_size,
@@ -224,12 +249,15 @@ impl CanvasFontContext {
 
     /// A convenience method to create a font context with the system source.
     /// This allows usage of fonts installed on the system.
-    pub fn from_system_source() -> CanvasFontContext {
-        CanvasFontContext::new(Arc::new(SystemSource::new()))
-    }
+    // pub fn from_system_source() -> CanvasFontContext {
+    //     CanvasFontContext::new(Arc::new(SystemSource::new()))
+    // }
 
     /// A convenience method to create a font context with a set of in-memory fonts.
-    pub fn from_fonts<I>(fonts: I) -> CanvasFontContext where I: Iterator<Item = Handle> {
+    pub fn from_fonts<I>(fonts: I) -> CanvasFontContext
+    where
+        I: Iterator<Item=Handle>,
+    {
         CanvasFontContext::new(Arc::new(MemSource::from_fonts(fonts).unwrap()))
     }
 
@@ -254,7 +282,7 @@ impl CanvasFontContext {
 /// Internally, this structure caches most of its layout queries.
 #[derive(Clone)]
 pub struct TextMetrics {
-    skribo_layout: Rc<SkriboLayout>,
+    skribo_layout: Rc<TextLayout>,
     font_size: f32,
     align: TextAlign,
     baseline: TextBaseline,
@@ -303,7 +331,7 @@ struct VerticalMetrics {
 }
 
 impl TextMetrics {
-    pub fn new(skribo_layout: Rc<SkriboLayout>,
+    pub fn new(skribo_layout: Rc<TextLayout>,
                font_size: f32,
                align: TextAlign,
                baseline: TextBaseline)
@@ -358,21 +386,22 @@ impl TextMetrics {
     }
 
     pub fn width(&self) -> f32 {
-        if self.width.get().is_none() {
-            match self.skribo_layout.glyphs.last() {
-                None => self.width.set(Some(0.0)),
-                Some(last_glyph) => {
-                    let glyph_id = last_glyph.glyph_id;
-                    let font_metrics = last_glyph.font.font.metrics();
-                    let scale_factor = self.skribo_layout.size / font_metrics.units_per_em as f32;
-                    let glyph_rect = last_glyph.font.font.typographic_bounds(glyph_id).unwrap();
-                    self.width.set(Some(last_glyph.offset.x() +
-                                        glyph_rect.max_x() * scale_factor));
-                }
-            }
-
-        }
-        self.width.get().unwrap()
+        // if self.width.get().is_none() {
+        //     match self.skribo_layout.glyphs.last() {
+        //         None => self.width.set(Some(0.0)),
+        //         Some(last_glyph) => {
+        //             let glyph_id = last_glyph.glyph_id;
+        //             let font_metrics = last_glyph.font.font.metrics();
+        //             let scale_factor = self.skribo_layout.size / font_metrics.units_per_em as f32;
+        //             let glyph_rect = last_glyph.font.font.typographic_bounds(glyph_id).unwrap();
+        //             self.width.set(Some(last_glyph.offset.x() +
+        //                 glyph_rect.max_x() * scale_factor));
+        //         }
+        //     }
+        // }
+        // self.width.get().unwrap()
+        unimplemented!();
+        0.0
     }
 
     fn populate_vertical_metrics_if_necessary(&self) {
@@ -412,47 +441,49 @@ impl TextMetrics {
     }
 
     pub fn actual_bounding_box_left(&self) -> f32 {
-        if self.actual_left_extent.get().is_none() {
-            match self.skribo_layout.glyphs.get(0) {
-                None => self.actual_left_extent.set(Some(0.0)),
-                Some(first_glyph) => {
-                    let glyph_id = first_glyph.glyph_id;
-                    let font_metrics = first_glyph.font.font.metrics();
-                    let scale_factor = self.skribo_layout.size / font_metrics.units_per_em as f32;
-                    let glyph_rect = first_glyph.font.font.raster_bounds(
-                        glyph_id,
-                        font_metrics.units_per_em as f32,
-                        Transform2F::default(),
-                        HintingOptions::None,
-                        RasterizationOptions::GrayscaleAa).unwrap();
-                    self.actual_left_extent.set(Some(first_glyph.offset.x() +
-                                                     glyph_rect.min_x() as f32 * scale_factor));
-                }
-            }
-        }
-        self.actual_left_extent.get().unwrap() + self.text_x_offset()
+        // if self.actual_left_extent.get().is_none() {
+        //     match self.skribo_layout.glyphs.get(0) {
+        //         None => self.actual_left_extent.set(Some(0.0)),
+        //         Some(first_glyph) => {
+        //             let glyph_id = first_glyph.glyph_id;
+        //             let font_metrics = first_glyph.font.font.metrics();
+        //             let scale_factor = self.skribo_layout.size / font_metrics.units_per_em as f32;
+        //             let glyph_rect = first_glyph.font.font.raster_bounds(
+        //                 glyph_id,
+        //                 font_metrics.units_per_em as f32,
+        //                 Transform2F::default(),
+        //                 HintingOptions::None,
+        //                 RasterizationOptions::GrayscaleAa).unwrap();
+        //             self.actual_left_extent.set(Some(first_glyph.offset.x() +
+        //                 glyph_rect.min_x() as f32 * scale_factor));
+        //         }
+        //     }
+        // }
+        // self.actual_left_extent.get().unwrap() + self.text_x_offset()
+        unimplemented!()
     }
 
     pub fn actual_bounding_box_right(&self) -> f32 {
-        if self.actual_right_extent.get().is_none() {
-            match self.skribo_layout.glyphs.last() {
-                None => self.actual_right_extent.set(Some(0.0)),
-                Some(last_glyph) => {
-                    let glyph_id = last_glyph.glyph_id;
-                    let font_metrics = last_glyph.font.font.metrics();
-                    let scale_factor = self.skribo_layout.size / font_metrics.units_per_em as f32;
-                    let glyph_rect = last_glyph.font.font.raster_bounds(
-                        glyph_id,
-                        font_metrics.units_per_em as f32,
-                        Transform2F::default(),
-                        HintingOptions::None,
-                        RasterizationOptions::GrayscaleAa).unwrap();
-                    self.actual_right_extent.set(Some(last_glyph.offset.x() +
-                                                      glyph_rect.max_x() as f32 * scale_factor));
-                }
-            }
-        }
-        self.actual_right_extent.get().unwrap() + self.text_x_offset()
+        // if self.actual_right_extent.get().is_none() {
+        //     match self.skribo_layout.glyphs.last() {
+        //         None => self.actual_right_extent.set(Some(0.0)),
+        //         Some(last_glyph) => {
+        //             let glyph_id = last_glyph.glyph_id;
+        //             let font_metrics = last_glyph.font.font.metrics();
+        //             let scale_factor = self.skribo_layout.size / font_metrics.units_per_em as f32;
+        //             let glyph_rect = last_glyph.font.font.raster_bounds(
+        //                 glyph_id,
+        //                 font_metrics.units_per_em as f32,
+        //                 Transform2F::default(),
+        //                 HintingOptions::None,
+        //                 RasterizationOptions::GrayscaleAa).unwrap();
+        //             self.actual_right_extent.set(Some(last_glyph.offset.x() +
+        //                 glyph_rect.max_x() as f32 * scale_factor));
+        //         }
+        //     }
+        // }
+        // self.actual_right_extent.get().unwrap() + self.text_x_offset()
+        unimplemented!()
     }
 
     pub fn hanging_baseline(&self) -> f32 {
@@ -469,11 +500,10 @@ impl TextMetrics {
         self.populate_vertical_metrics_if_necessary();
         self.vertical_metrics.get().unwrap().ideographic_baseline - self.text_y_offset()
     }
-
 }
 
 impl VerticalMetrics {
-    fn measure(skribo_layout: &SkriboLayout) -> VerticalMetrics {
+    fn measure(skribo_layout: &TextLayout) -> VerticalMetrics {
         let mut vertical_metrics = VerticalMetrics {
             font_bounding_box_ascent: 0.0,
             font_bounding_box_descent: 0.0,
@@ -493,20 +523,20 @@ impl VerticalMetrics {
                 _ => {
                     let font = glyph.font.font.clone();
 
-                    let font_metrics = font.metrics();
-                    let scale_factor = skribo_layout.size / font_metrics.units_per_em as f32;
-                    vertical_metrics.em_height_ascent =
-                        (font_metrics.ascent *
-                         scale_factor).max(vertical_metrics.em_height_ascent);
-                    vertical_metrics.em_height_descent =
-                        (font_metrics.descent *
-                         scale_factor).min(vertical_metrics.em_height_descent);
-                    vertical_metrics.font_bounding_box_ascent =
-                        (font_metrics.bounding_box.max_y() *
-                         scale_factor).max(vertical_metrics.font_bounding_box_ascent);
-                    vertical_metrics.font_bounding_box_descent =
-                        (font_metrics.bounding_box.min_y() *
-                         scale_factor).min(vertical_metrics.font_bounding_box_descent);
+                    // let font_metrics = font.metrics();
+                    // let scale_factor = skribo_layout.size / font_metrics.units_per_em as f32;
+                    // vertical_metrics.em_height_ascent =
+                    //     (font_metrics.ascent *
+                    //         scale_factor).max(vertical_metrics.em_height_ascent);
+                    // vertical_metrics.em_height_descent =
+                    //     (font_metrics.descent *
+                    //         scale_factor).min(vertical_metrics.em_height_descent);
+                    // vertical_metrics.font_bounding_box_ascent =
+                    //     (font_metrics.bounding_box.max_y() *
+                    //         scale_factor).max(vertical_metrics.font_bounding_box_ascent);
+                    // vertical_metrics.font_bounding_box_descent =
+                    //     (font_metrics.bounding_box.min_y() *
+                    //         scale_factor).min(vertical_metrics.font_bounding_box_descent);
 
                     last_font = Some(font);
                 }

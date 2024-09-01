@@ -8,12 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use font_kit::error::GlyphLoadingError;
-use font_kit::hinting::HintingOptions;
-use font_kit::loader::Loader;
-use font_kit::loaders::default::Font as DefaultLoader;
-use font_kit::metrics::Metrics;
-use font_kit::outline::OutlineSink;
+pub mod collection;
+pub mod hinting;
+pub mod rasterization;
+pub mod family_name;
+pub mod properties;
+pub mod error;
+pub mod source;
+pub mod sources;
+pub mod handle;
+pub mod family_handle;
+pub mod family;
+pub mod text_layout;
+pub mod metrics;
+pub mod outline;
+pub mod matching;
+// use font_kit::error::GlyphLoadingError;
+// use font_kit::hinting::HintingOptions;
+// use font_kit::loader::Loader;
+// use font_kit::loaders::default::Font as DefaultLoader;
+// use font_kit::metrics::Metrics;
+// use font_kit::outline::OutlineSink;
+
 use pathfinder_content::effects::BlendMode;
 use pathfinder_content::outline::{Contour, Outline};
 use pathfinder_content::stroke::{OutlineStrokeToFill, StrokeStyle};
@@ -22,19 +38,31 @@ use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, vec2f};
 use pathfinder_renderer::paint::PaintId;
 use pathfinder_renderer::scene::{ClipPathId, DrawPath, Scene};
-use skribo::{FontCollection, Layout, TextStyle};
+
 use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
+use crate::collection::{Font, FontCollection};
+use crate::error::GlyphLoadingError;
+use crate::hinting::HintingOptions;
+use crate::metrics::Metrics;
+use crate::outline::OutlineSink;
+use crate::text_layout::TextLayout;
 
 #[derive(Clone)]
-pub struct FontContext<F> where F: Loader {
-    font_info: HashMap<String, FontInfo<F>>, 
+pub struct TextStyle {
+    // This should be either horiz and vert, or a 2x2 matrix
+    pub size: f32,
 }
 
 #[derive(Clone)]
-struct FontInfo<F> where F: Loader {
-    font: F,
+pub struct FontContext {
+    font_info: HashMap<String, FontInfo>, 
+}
+
+#[derive(Clone)]
+struct FontInfo {
+    font: Font,
     metrics: Metrics,
     outline_cache: HashMap<GlyphId, Outline>,
 }
@@ -63,23 +91,23 @@ impl Default for FontRenderOptions {
     }
 }
 
-enum FontInfoRefMut<'a, F> where F: Loader {
-    Ref(&'a mut FontInfo<F>),
-    Owned(FontInfo<F>),
+enum FontInfoRefMut<'a> {
+    Ref(&'a mut FontInfo),
+    Owned(FontInfo),
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, Eq, Hash)]
 pub struct GlyphId(pub u32);
 
-impl<F> FontContext<F> where F: Loader {
+impl FontContext {
     #[inline]
-    pub fn new() -> FontContext<F> {
+    pub fn new() -> FontContext {
         FontContext { font_info: HashMap::new() }
     }
 
     fn push_glyph(&mut self,
                   scene: &mut Scene,
-                  font: &F,
+                  font: &Font,
                   font_key: Option<&str>,
                   glyph_id: GlyphId,
                   glyph_offset: Vector2F,
@@ -158,19 +186,19 @@ impl<F> FontContext<F> where F: Loader {
 
     /// Attempts to look up a font in the font cache.
     #[inline]
-    pub fn get_cached_font(&self, postscript_name: &str) -> Option<&F> {
+    pub fn get_cached_font(&self, postscript_name: &str) -> Option<&Font> {
         self.font_info.get(postscript_name).map(|font_info| &font_info.font)
     }
 }
 
-impl FontContext<DefaultLoader> {
+impl FontContext {
     pub fn push_layout(&mut self,
                        scene: &mut Scene,
-                       layout: &Layout,
+                       layout: &TextLayout,
                        style: &TextStyle,
                        render_options: &FontRenderOptions)
                        -> Result<(), GlyphLoadingError> {
-        let mut cached_font_key: Option<CachedFontKey<DefaultLoader>> = None;
+        let mut cached_font_key: Option<CachedFontKey> = None;
         for glyph in &layout.glyphs {
             match cached_font_key {
                 Some(ref cached_font_key) if Arc::ptr_eq(&cached_font_key.font,
@@ -202,25 +230,26 @@ impl FontContext<DefaultLoader> {
                      collection: &FontCollection,
                      render_options: &FontRenderOptions)
                      -> Result<(), GlyphLoadingError> {
-        let layout = skribo::layout(style, collection, text);
-        self.push_layout(scene, &layout, style, render_options)
+        // let layout = skribo::layout(style, collection, text);
+        // self.push_layout(scene, &layout, style, render_options)
+        unimplemented!()
     }
 }
 
-struct CachedFontKey<F> where F: Loader {
-    font: Arc<F>,
+struct CachedFontKey {
+    font: Arc<Font>,
     key: Option<String>,
 }
 
-impl<F> FontInfo<F> where F: Loader {
-    fn new(font: F) -> FontInfo<F> {
+impl FontInfo {
+    fn new(font: Font) -> FontInfo {
         let metrics = font.metrics();
         FontInfo { font, metrics, outline_cache: HashMap::new() }
     }
 }
 
-impl<'a, F> FontInfoRefMut<'a, F> where F: Loader {
-    fn get_mut(&mut self) -> &mut FontInfo<F> {
+impl<'a> FontInfoRefMut<'a> {
+    fn get_mut(&mut self) -> &mut FontInfo {
         match *self {
             FontInfoRefMut::Ref(ref mut reference) => &mut **reference,
             FontInfoRefMut::Owned(ref mut info) => info,

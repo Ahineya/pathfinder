@@ -6,8 +6,9 @@ edition = "2018"
 
 [dependencies]
 arrayvec = "0.5"
-font-kit = "0.6"
 gl = "0.14"
+
+font-kit = {optional = true, path = "../../../../crates/font-kit" }
 
 [dependencies.euclid]
 version = "0.20"

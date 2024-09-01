@@ -9,7 +9,10 @@ repository = "https://github.com/servo/pathfinder"
 homepage = "https://github.com/servo/pathfinder"
 
 [dependencies]
-font-kit = "0.6"
+#font-kit = {path = "../../../crates/font-kit" }
+bitflags = "2.4"
+log = "0.4.22"
+float-ord = "0.3"
 
 [dependencies.pathfinder_content]
 path = "../content"
@@ -23,5 +26,6 @@ version = "0.5"
 path = "../renderer"
 version = "0.5"
 
-[dependencies.skribo]
-version = "0.1"
+#[dependencies.skribo]
+#version = "0.1"
+#path = "../../skribo"

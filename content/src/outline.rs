@@ -24,6 +24,8 @@ use pathfinder_geometry::vector::{Vector2F, vec2f};
 use std::f32::consts::PI;
 use std::fmt::{self, Debug, Formatter};
 use std::mem;
+use bitflags::bitflags;
+
 
 /// A vector path to be filled. Outlines (a.k.a. paths) consist of *contours* (a.k.a. subpaths),
 /// which can be filled according to a fill rule.
